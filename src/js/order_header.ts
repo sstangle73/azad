@@ -104,14 +104,16 @@ function reallyExtractOrderHeader(
       );
 
       const raw = extraction.getField2(xpaths, elem, '', context);
-      const ddd = new Date(date.normalizeDateString(util.defaulted(raw, '')));
+      const ddd = date.dateFromNormalizedDateString(
+        date.normalizeDateString(util.defaulted(raw, '')));
       return ddd;
     }
 
     function strategy1(): Date {
       const xpaths = labels.map(label => `.//div[contains(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), "${label}")]/following-sibling::div`);
       const raw = extraction.getField2(xpaths, elem, '', context);
-      const ddd = new Date(date.normalizeDateString(util.defaulted(raw, '')));
+      const ddd = date.dateFromNormalizedDateString(
+        date.normalizeDateString(util.defaulted(raw, '')));
       return ddd;
     }
 
@@ -121,7 +123,8 @@ function reallyExtractOrderHeader(
         `.//li[contains(@class,"order-header__header-list-item") and contains(text(),"${label.split(' ')[0]}")]//span`
       );
       const raw = extraction.getField2(xpaths, elem, '', context);
-      const ddd = new Date(date.normalizeDateString(util.defaulted(raw, '')));
+      const ddd = date.dateFromNormalizedDateString(
+        date.normalizeDateString(util.defaulted(raw, '')));
       return ddd;
     }
 
