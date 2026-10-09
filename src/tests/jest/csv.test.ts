@@ -110,3 +110,45 @@ describe('make_csv_string', () => {
     expect(last[1]).toEqual('=SUBTOTAL(109,B2:B3)');
   });
 });
+
+describe('csv file name (issue #398)', () => {
+  test.each([
+    ['orders', '2025', 'amazon_orders_history_2025.csv'],
+    ['items', '2023-2025', 'amazon_items_history_2023-2025.csv'],
+    ['shipments', '', 'amazon_shipments_history.csv'],
+    ['transactions', '2026-07-08_to_2026-10-08',
+     'amazon_transactions_history_2026-07-08_to_2026-10-08.csv'],
+    ['orders', '2019, 2023', 'amazon_orders_history_2019_2023.csv'],
+    ['', '', 'amazon_order_history.csv'],
+  ])('%s %j', (tableType, period, expected) => {
+    expect(csv.filename(tableType, period)).toEqual(expected);
+  });
+
+  test('yearsLabel', () => {
+    expect(csv.yearsLabel([2025])).toEqual('2025');
+    expect(csv.yearsLabel([2025, 2023, 2024])).toEqual('2023-2025');
+    expect(csv.yearsLabel([2023, 2019])).toEqual('2019_2023');
+    expect(csv.yearsLabel([2024, 2024])).toEqual('2024');
+    expect(csv.yearsLabel([])).toEqual('');
+  });
+
+  test('periodLabel: whole years, as iframe-worker builds them', () => {
+    expect(csv.periodLabel(
+      new Date(2025, 0), new Date(2025, 11, 31, 23, 59, 59, 999),
+    )).toEqual('2025');
+
+    expect(csv.periodLabel(
+      new Date(2023, 0), new Date(2025, 11, 31, 23, 59, 59, 999),
+    )).toEqual('2023-2025');
+  });
+
+  test('periodLabel: a range of months', () => {
+    expect(csv.periodLabel(
+      new Date(2026, 6, 8, 14, 30), new Date(2026, 9, 8, 14, 30),
+    )).toEqual('2026-07-08_to_2026-10-08');
+  });
+
+  test('periodLabel: invalid dates give no label', () => {
+    expect(csv.periodLabel(new Date('x'), new Date())).toEqual('');
+  });
+});
