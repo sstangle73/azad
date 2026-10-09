@@ -22,6 +22,37 @@ type headerPageUrlGenerator = (
   startOrderIndex: number,
 ) => Promise<AttributedUrl>;
 
+// Older years' list pages are cached, but not for ever: orders get archived,
+// and Amazon re-renders its lists.
+export const LIST_PAGE_CACHE_MAX_AGE_MILLIS = 7 * 24 * 60 * 60 * 1000;
+
+export type ListPageCachePolicy = {
+  nocache: boolean,
+  maxAgeMillis: number,
+};
+
+/*
+ * Whether a page of order headers may come from (and go to) the cache.
+ * Pages for a year that is still filling up change between scrapes: new
+ * orders push older ones onto later pages. So they are always fetched
+ * afresh, as are first pages (as before). "Still filling up" means any year
+ * that includes a day in the last month, which covers late orders from
+ * 31 December during January.
+ */
+export function listPageCachePolicy(
+  year: number,
+  startOrderIndex: number,
+  now: Date = new Date(),
+): ListPageCachePolicy {
+  const aMonthAgo = new Date(now.getTime() - 31 * 24 * 60 * 60 * 1000);
+  const recent = year >= aMonthAgo.getFullYear();
+
+  return {
+    nocache: startOrderIndex == 0 || recent,
+    maxAgeMillis: LIST_PAGE_CACHE_MAX_AGE_MILLIS,
+  };
+}
+
 async function get_page_of_headers(
   site: string,
   year: number,
@@ -33,8 +64,8 @@ async function get_page_of_headers(
   const url = aUrl.url;
   const urlTemplate = aUrl.template;
   const pageReadyXpath = '//*[contains(@class, "yohtmlc-order-id")]';
-  const nocache = start_order_number == 0;
-  const priority = nocache ? '00000' : '2';
+  const cachePolicy = listPageCachePolicy(year, start_order_number);
+  const priority = start_order_number == 0 ? '00000' : '2';
 
   const pdp = request.makeAsyncDynamicRequest(
     url,
@@ -43,8 +74,15 @@ async function get_page_of_headers(
     pageReadyXpath,
     scheduler,
     priority,
-    nocache,
+    cachePolicy.nocache,
     `order_list_page.get_page_of_headers: ${start_order_number}`,  // context
+    {
+      maxAgeMillis: cachePolicy.maxAgeMillis,
+      // A page with no order cards may just be one that didn't render in
+      // time: don't let it stand in for the real page on later scrapes.
+      shouldCache: (pageData: OrderHeaderPageData) =>
+        pageData.headers.length > 0,
+    },
   ) as Promise<OrderHeaderPageData>;
 
   try {
