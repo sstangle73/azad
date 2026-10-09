@@ -119,8 +119,10 @@ function reallyExtractOrderHeader(
 
     function strategy2(): Date {
       // New Amazon page structure (as of 2026/08/16): order-header__header-list-item contains label and date in span
+      // labels are lower case, so the li text must be lowered too (as in
+      // strategy0), or "Order placed" never contains "order".
       const xpaths = labels.map(label =>
-        `.//li[contains(@class,"order-header__header-list-item") and contains(text(),"${label.split(' ')[0]}")]//span`
+        `.//li[contains(@class,"order-header__header-list-item") and contains(translate(text(),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),"${label.split(' ')[0]}")]//span`
       );
       const raw = extraction.getField2(xpaths, elem, '', context);
       const ddd = date.dateFromNormalizedDateString(
